@@ -3,16 +3,19 @@ package android.thecodingarcher.mvvmtest;
 import android.os.Bundle;
 import android.thecodingarcher.mvvmtest.adapters.RecyclerAdapter;
 import android.thecodingarcher.mvvmtest.models.NicePlace;
+import android.thecodingarcher.mvvmtest.viewModels.MainActivityViewModel;
 import android.view.View;
 import android.widget.ProgressBar;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,6 +26,8 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerAdapter mAdapter;
     private ProgressBar mProgressBar;
 
+    private MainActivityViewModel mMainActivityViewModel;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,11 +37,46 @@ public class MainActivity extends AppCompatActivity {
         mRecyclerView = findViewById(R.id.recycler_view);
         mProgressBar = findViewById(R.id.progress_bar);
 
+        mMainActivityViewModel = ViewModelProviders.of(this).get(MainActivityViewModel.class);
+
+        mMainActivityViewModel.init();
+
+        mMainActivityViewModel.getNicePlaces().observe(this, new Observer<List<NicePlace>>() {
+            @Override
+            public void onChanged(List<NicePlace> nicePlaces) {
+                mAdapter.notifyDataSetChanged();
+            }
+        });
+
+        mMainActivityViewModel.getIsUpdating().observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(Boolean aBoolean) {
+                if (aBoolean) {
+                    showProgressBar();
+                } else {
+                    hideProgressBar();
+                    mRecyclerView.smoothScrollToPosition(mMainActivityViewModel.getNicePlaces().getValue().size() - 1);
+                }
+            }
+        });
+
+        mFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mMainActivityViewModel.addNewValue(
+                        new NicePlace(
+                                "https://i.imgur.com/ZcLLrkY.jpg",
+                                "Washington"
+                        )
+                );
+            }
+        });
+
         initRecyclerView();
     }
 
     private void initRecyclerView(){
-        mAdapter = new RecyclerAdapter(this, new ArrayList<NicePlace>());
+        mAdapter = new RecyclerAdapter(this, mMainActivityViewModel.getNicePlaces().getValue());
         RecyclerView.LayoutManager linearLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(linearLayoutManager);
         mRecyclerView.setAdapter(mAdapter);
